@@ -2,40 +2,49 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-// Media types Claude's vision accepts
 const ALLOWED = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
-type Media = (typeof ALLOWED)[number];
+
+// Strip ```json ... ``` fences if the model adds them, then parse.
+function extractJson(raw: string): unknown {
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = (fenced ? fenced[1] : raw).trim();
+  return JSON.parse(candidate); // throws if not valid JSON
+}
 
 export async function POST(req: NextRequest) {
   try {
     const form = await req.formData();
     const file = form.get("image") as File | null;
     if (!file) return NextResponse.json({ error: "No image uploaded" }, { status: 400 });
-
-    const mediaType = file.type as Media;
-    if (!ALLOWED.includes(mediaType)) {
+    if (!ALLOWED.includes(file.type as any)) {
       return NextResponse.json({ error: `Unsupported type: ${file.type}` }, { status: 400 });
     }
 
     const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
 
     const msg = await anthropic.messages.create({
-      model: "claude-haiku-4-5",          // cheap + good; switch to claude-sonnet-4-6 if accuracy slips
-      max_tokens: 4096,
+      model: "claude-haiku-4-5",
+      max_tokens: 2048,
       messages: [
         {
           role: "user",
           content: [
-            { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
+            { type: "image", source: { type: "base64", media_type: file.type as any, data: base64 } },
             { type: "text", text: PROMPT },
           ],
         },
       ],
     });
 
-    const text = msg.content.find((b) => b.type === "text")?.text ?? "";
-    return NextResponse.json({ result: text });
+    const raw = msg.content.find((b) => b.type === "text")?.text ?? "";
+
+    try {
+      const parsed = extractJson(raw);
+      return NextResponse.json({ result: parsed });   // <-- real JSON object
+    } catch {
+      // Model didn't return clean JSON — send raw back so the UI can show it
+      return NextResponse.json({ error: "Could not parse JSON", raw }, { status: 422 });
+    }
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: "Failed to parse statblock" }, { status: 500 });
@@ -53,7 +62,7 @@ Rules:
 - CR as a number: 1/8 → 0.125, 1/4 → 0.25, 1/2 → 0.5, otherwise use the integer.
 - Traits (passive features), actions, bonus actions, reactions, and legendary actions each become
   an entry in the top-level "items" array with type "feat". Weapons may use type "weapon".
-- Output ONLY the JSON object. No commentary, no markdown fences.
+- Output it ONLY the JSON object. No commentary, no markdown fences.
 
 Example output for a Goblin:
 {
