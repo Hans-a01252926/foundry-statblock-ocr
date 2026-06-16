@@ -61,12 +61,12 @@ Example output for a Goblin:
   "type": "npc",
   "system": {
     "abilities": {
-      "str": { "value": 8,  "proficient": 0 },
-      "dex": { "value": 14, "proficient": 0 },
-      "con": { "value": 10, "proficient": 0 },
-      "int": { "value": 10, "proficient": 0 },
-      "wis": { "value": 8,  "proficient": 0 },
-      "cha": { "value": 8,  "proficient": 0 }
+      "str": { "value": 8,  "proficient": 0, "bonuses": {"check": "", "save": ""} },
+      "dex": { "value": 14, "proficient": 0, "bonuses": {"check": "", "save": ""} },
+      "con": { "value": 10, "proficient": 0, "bonuses": {"check": "", "save": ""} },
+      "int": { "value": 10, "proficient": 0, "bonuses": {"check": "", "save": ""} },
+      "wis": { "value": 8,  "proficient": 0, "bonuses": {"check": "", "save": ""} },
+      "cha": { "value": 8,  "proficient": 0, "bonuses": {"check": "", "save": ""} }
     },
     "attributes": {
       "ac":    { "flat": 15, "calc": "flat", "formula": "" },
