@@ -23,8 +23,9 @@ export async function POST(req: NextRequest) {
     const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
 
     const msg = await anthropic.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 2048,
+      model: "claude-sonnet-4-6",
+      max_tokens: 4096,
+      temperature: 0,
       messages: [
         {
           role: "user",
@@ -47,8 +48,9 @@ export async function POST(req: NextRequest) {
     }
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ error: "Failed to parse statblock" }, { status: 500 });
-  }
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
+    }
 }
 
 const PROMPT = `You are reading an image of a Dungeons & Dragons 5th Edition monster/NPC statblock.
@@ -56,12 +58,12 @@ Transcribe it into a valid Foundry VTT dnd5e actor JSON document, following thes
 
 Rules:
 - Preserve every field visible in the image. Do NOT invent values. If a field is unreadable, omit it.
+- Internally read each printed LABEL and the number physically attached to it, then map each value to its own field. Do not let a number bleed from one field into another.
 - size must be one of: "tiny" | "sm" | "med" | "lg" | "huge" | "grg"
 - Ability score saving throw proficiency: set system.abilities.[key].proficient to 1 if a save bonus is listed, else 0.
 - Skill proficiency values: 0 = none, 1 = proficient, 2 = expertise.
 - CR as a number: 1/8 → 0.125, 1/4 → 0.25, 1/2 → 0.5, otherwise use the integer.
-- Traits (passive features), actions, bonus actions, reactions, and legendary actions each become
-  an entry in the top-level "items" array with type "feat". Weapons may use type "weapon".
+- Traits (passive features), actions, bonus actions, reactions, and legendary actions each become an entry in the top-level "items" array with type "feat". Weapons may use type "weapon".
 - Output it ONLY the JSON object. No commentary, no markdown fences.
 
 Example output for a Goblin:
